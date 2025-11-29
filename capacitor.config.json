@@ -1,0 +1,9 @@
+{
+  "appId": "com.options.categorizer",
+  "appName": "Options Categorizer",
+  "webDir": "dist",
+  "bundledWebRuntime": false,
+  "server": {
+    "androidScheme": "https"
+  }
+}
