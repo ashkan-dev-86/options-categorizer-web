@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { MemoryRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { CategoryList } from './components/CategoryList';
 import { CategoryDetail } from './components/CategoryDetail';
-import { Category } from './types';
+import { Category, CategoryItem, GroupItem, OptionItem } from './types';
 import { generateId } from './utils';
 import { ThemeProvider, useTheme } from './components/ThemeProvider';
 import { Sun, Moon, Laptop, Layers } from 'lucide-react';
@@ -70,10 +70,83 @@ function AppContent() {
 
   const importCategories = (imported: Category[]) => {
     setCategories(prev => {
-      // Merge strategy: Create a map of existing categories by ID, then overwrite/add with imported ones.
-      const map = new Map(prev.map(c => [c.id, c]));
-      imported.forEach(c => map.set(c.id, c));
-      return Array.from(map.values());
+      const newCategories = [...prev];
+
+      imported.forEach(impCat => {
+        // Find existing category by TITLE (Case Sensitive)
+        const existingCatIndex = newCategories.findIndex(c => c.title === impCat.title);
+
+        if (existingCatIndex >= 0) {
+          // Category exists: Merge content
+          const existingCat = newCategories[existingCatIndex];
+          const newItems = [...existingCat.items];
+          
+          impCat.items.forEach(impItem => {
+            if (impItem.type === 'GROUP') {
+              // Handle Group Merge
+              // Find existing group by TITLE (Case Sensitive)
+              const existingGroupIndex = newItems.findIndex(i => i.type === 'GROUP' && i.title === impItem.title);
+              
+              if (existingGroupIndex !== -1) {
+                // Group exists: Merge options inside
+                const existingGroup = newItems[existingGroupIndex] as GroupItem;
+                const existingGroupItems = [...existingGroup.items];
+                const existingSubTitles = new Set(existingGroupItems.map(i => i.title));
+
+                (impItem as GroupItem).items.forEach(impSubItem => {
+                  // Check options by Title
+                  if (!existingSubTitles.has(impSubItem.title)) {
+                    // Add new option to existing group (Generate new ID to avoid collisions)
+                    existingGroupItems.push({ ...impSubItem, id: generateId() });
+                  }
+                });
+                
+                newItems[existingGroupIndex] = { ...existingGroup, items: existingGroupItems };
+              } else {
+                // Group doesn't exist: Add it (and regenerate IDs for group and its children)
+                newItems.push({
+                  ...impItem,
+                  id: generateId(),
+                  items: (impItem as GroupItem).items.map(sub => ({ ...sub, id: generateId() }))
+                });
+              }
+            } else {
+              // Handle Option Merge
+              // Find existing option by TITLE
+              const optionExists = newItems.some(i => i.type === 'OPTION' && i.title === impItem.title);
+              
+              if (!optionExists) {
+                // Option doesn't exist: Add it (Generate new ID)
+                 newItems.push({ ...impItem, id: generateId() });
+              }
+            }
+          });
+
+          newCategories[existingCatIndex] = {
+            ...existingCat,
+            items: newItems,
+            modifiedAt: Date.now()
+          };
+        } else {
+          // New Category: Add it (Regenerate IDs for everything to be safe)
+          newCategories.push({
+            ...impCat,
+            id: generateId(),
+            items: impCat.items.map(item => {
+              if (item.type === 'GROUP') {
+                return {
+                  ...(item as GroupItem),
+                  id: generateId(),
+                  items: (item as GroupItem).items.map(sub => ({ ...sub, id: generateId() }))
+                };
+              }
+              return { ...item, id: generateId() };
+            })
+          });
+        }
+      });
+
+      return newCategories;
     });
   };
 

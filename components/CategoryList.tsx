@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Search, Calendar, Edit2, Trash2, ArrowUpDown, Clock, Download, Upload } from 'lucide-react';
+import { Plus, Search, Calendar, Edit2, Trash2, ArrowUpDown, Clock, Download, Upload, AlertTriangle } from 'lucide-react';
 import { Category, CategorySortField, SortDirection } from '../types';
 import { Button, Input, Modal } from './ui';
 import { formatDate, generateId } from '../utils';
@@ -21,6 +21,9 @@ export const CategoryList: React.FC<CategoryListProps> = ({ categories, addCateg
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [formTitle, setFormTitle] = useState('');
   const [formDesc, setFormDesc] = useState('');
+  
+  // Delete confirmation state
+  const [deleteId, setDeleteId] = useState<string | null>(null);
   
   const [search, setSearch] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -101,16 +104,23 @@ export const CategoryList: React.FC<CategoryListProps> = ({ categories, addCateg
 
   const openEditModal = (cat: Category, e: React.MouseEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     setEditingCategory(cat);
     setFormTitle(cat.title);
     setFormDesc(cat.description || '');
     setIsModalOpen(true);
   };
 
-  const handleDelete = (id: string, e: React.MouseEvent) => {
+  const requestDelete = (id: string, e: React.MouseEvent) => {
     e.preventDefault();
-    if (window.confirm('Are you sure you want to delete this category?')) {
-      deleteCategory(id);
+    e.stopPropagation();
+    setDeleteId(id);
+  };
+
+  const confirmDelete = () => {
+    if (deleteId) {
+      deleteCategory(deleteId);
+      setDeleteId(null);
     }
   };
 
@@ -124,7 +134,7 @@ export const CategoryList: React.FC<CategoryListProps> = ({ categories, addCateg
       setSortDir(prev => prev === SortDirection.ASC ? SortDirection.DESC : SortDirection.ASC);
     } else {
       setSortField(field);
-      setSortDir(SortDirection.DESC); // Default to newest/Z-A when switching
+      setSortDir(SortDirection.ASC);
     }
   };
 
@@ -163,7 +173,6 @@ export const CategoryList: React.FC<CategoryListProps> = ({ categories, addCateg
       } catch (err) {
         alert('Failed to parse file. Please ensure it is a valid JSON/TXT file.');
       }
-      // Reset input so same file can be selected again if needed
       if (fileInputRef.current) fileInputRef.current.value = '';
     };
     reader.readAsText(file);
@@ -259,10 +268,20 @@ export const CategoryList: React.FC<CategoryListProps> = ({ categories, addCateg
                   {cat.title}
                 </h3>
                 <div className="flex gap-1 absolute top-4 right-4 bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm p-1 rounded-lg shadow-sm">
-                  <button onClick={(e) => openEditModal(cat, e)} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400">
+                  <button 
+                    type="button"
+                    onClick={(e) => openEditModal(cat, e)} 
+                    className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+                    aria-label="Edit category"
+                  >
                     <Edit2 className="w-4 h-4" />
                   </button>
-                  <button onClick={(e) => handleDelete(cat.id, e)} className="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md text-slate-500 hover:text-red-600 dark:hover:text-red-400">
+                  <button 
+                    type="button"
+                    onClick={(e) => requestDelete(cat.id, e)} 
+                    className="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md text-slate-500 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                    aria-label="Delete category"
+                  >
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
@@ -316,6 +335,29 @@ export const CategoryList: React.FC<CategoryListProps> = ({ categories, addCateg
             />
           </div>
         </form>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        isOpen={!!deleteId}
+        onClose={() => setDeleteId(null)}
+        title="Delete Category"
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setDeleteId(null)}>Cancel</Button>
+            <Button variant="danger" onClick={confirmDelete}>Delete Category</Button>
+          </>
+        }
+      >
+        <div className="flex items-start gap-4 p-2">
+          <div className="p-3 bg-red-100 dark:bg-red-900/30 rounded-full text-red-600 dark:text-red-400 shrink-0">
+             <AlertTriangle size={24} />
+          </div>
+          <div className="space-y-2">
+            <p className="text-slate-700 dark:text-slate-300 font-medium">Are you sure you want to delete this category?</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">This action cannot be undone. All groups and options inside will be permanently lost.</p>
+          </div>
+        </div>
       </Modal>
     </div>
   );

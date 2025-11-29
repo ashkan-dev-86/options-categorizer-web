@@ -28,7 +28,8 @@ import {
   CornerDownRight,
   Move,
   ArrowDownAZ,
-  Calendar
+  Calendar,
+  AlertTriangle
 } from 'lucide-react';
 import { Category, OptionItem, GroupItem, ItemSortField, SortDirection } from '../types';
 import { Button, Input, Modal } from './ui';
@@ -53,6 +54,9 @@ export const CategoryDetail: React.FC<CategoryDetailProps> = ({ categories, upda
   const [targetGroupId, setTargetGroupId] = useState<string | null>(null);
   const [moveTargetId, setMoveTargetId] = useState<string | null>(null);
   const [inputText, setInputText] = useState('');
+  
+  // Delete Confirmation State
+  const [deleteTarget, setDeleteTarget] = useState<{id: string, parentId?: string, isGroup: boolean} | null>(null);
   
   // Sorting State with Persistence
   const [sortField, setSortField] = useState<ItemSortField>(() => {
@@ -101,19 +105,6 @@ export const CategoryDetail: React.FC<CategoryDetailProps> = ({ categories, upda
     
     return { groups: gs, options: os };
   }, [category.items, sortField, sortDir]);
-
-  // Combined items for finding things easily
-  const findItem = (id: string) => {
-    const root = category.items.find(i => i.id === id);
-    if (root) return root;
-    for (const item of category.items) {
-      if (item.type === 'GROUP') {
-        const sub = item.items.find(o => o.id === id);
-        if (sub) return sub;
-      }
-    }
-    return null;
-  };
 
   // -- Handlers --
 
@@ -212,8 +203,15 @@ export const CategoryDetail: React.FC<CategoryDetailProps> = ({ categories, upda
     closeModal();
   };
 
-  const handleDeleteItem = (itemId: string, parentGroupId?: string) => {
-    if(!window.confirm("Delete this item?")) return;
+  const requestDelete = (itemId: string, e: React.MouseEvent, parentGroupId?: string, isGroup: boolean = false) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setDeleteTarget({ id: itemId, parentId: parentGroupId, isGroup });
+  };
+
+  const confirmDelete = () => {
+    if (!deleteTarget) return;
+    const { id: itemId, parentId: parentGroupId } = deleteTarget;
     
     let newItems = [...category.items];
     if (parentGroupId) {
@@ -226,6 +224,7 @@ export const CategoryDetail: React.FC<CategoryDetailProps> = ({ categories, upda
       newItems = newItems.filter(i => i.id !== itemId);
     }
     updateCategory({ ...category, items: newItems, modifiedAt: Date.now() });
+    setDeleteTarget(null);
   };
 
   const handleMoveOption = (targetGroupId: string | 'ROOT') => {
@@ -310,7 +309,7 @@ export const CategoryDetail: React.FC<CategoryDetailProps> = ({ categories, upda
       {({ handleProps }) => (
         <div className="flex items-center gap-3 p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm hover:border-indigo-300 dark:hover:border-indigo-500 transition-colors">
           {!disabledDrag && (
-            <button {...handleProps} className="p-1 text-slate-300 hover:text-slate-600 dark:hover:text-slate-400 cursor-grab active:cursor-grabbing touch-none">
+            <button type="button" {...handleProps} className="p-1 text-slate-300 hover:text-slate-600 dark:hover:text-slate-400 cursor-grab active:cursor-grabbing touch-none">
               <GripVertical size={18} />
             </button>
           )}
@@ -321,6 +320,7 @@ export const CategoryDetail: React.FC<CategoryDetailProps> = ({ categories, upda
           
           <div className="flex items-center">
             <button 
+              type="button"
               onClick={() => openMoveModal(item.id)}
               className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 dark:hover:text-indigo-400 rounded-lg" 
               title="Move"
@@ -328,7 +328,8 @@ export const CategoryDetail: React.FC<CategoryDetailProps> = ({ categories, upda
               <Move size={16} />
             </button>
             <button 
-              onClick={() => handleDeleteItem(item.id, parentId)}
+              type="button"
+              onClick={(e) => requestDelete(item.id, e, parentId, false)}
               className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 dark:hover:text-red-400 rounded-lg"
               title="Delete"
             >
@@ -415,7 +416,7 @@ export const CategoryDetail: React.FC<CategoryDetailProps> = ({ categories, upda
                       <div className="bg-slate-50/50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden mb-3">
                         <div className="flex items-center gap-3 p-4 bg-slate-100/50 dark:bg-slate-800/50 border-b border-slate-200/50 dark:border-slate-700/50">
                           {isManualSort && (
-                            <button {...handleProps} className="p-1 text-slate-300 hover:text-slate-600 dark:hover:text-slate-400 cursor-grab active:cursor-grabbing touch-none">
+                            <button type="button" {...handleProps} className="p-1 text-slate-300 hover:text-slate-600 dark:hover:text-slate-400 cursor-grab active:cursor-grabbing touch-none">
                               <GripVertical size={18} />
                             </button>
                           )}
@@ -425,14 +426,17 @@ export const CategoryDetail: React.FC<CategoryDetailProps> = ({ categories, upda
                           <div className="flex-1 font-bold text-slate-800 dark:text-slate-200">{group.title}</div>
                           <div className="flex items-center gap-1">
                              <button 
+                                type="button"
                                 onClick={() => openCreateModal('createOption', group.id)}
                                 className="flex items-center px-2 py-1 text-xs font-medium text-indigo-600 bg-indigo-50 dark:bg-indigo-900/30 dark:text-indigo-400 rounded-md hover:bg-indigo-100 dark:hover:bg-indigo-900/50"
                               >
                                 <Plus size={12} className="mr-1" /> Add
                               </button>
                               <button 
-                                onClick={() => handleDeleteItem(group.id)}
+                                type="button"
+                                onClick={(e) => requestDelete(group.id, e, undefined, true)}
                                 className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 dark:hover:text-red-400 rounded-lg"
+                                title="Delete group"
                               >
                                 <Trash2 size={16} />
                               </button>
@@ -518,6 +522,7 @@ export const CategoryDetail: React.FC<CategoryDetailProps> = ({ categories, upda
       >
         <div className="space-y-2">
            <button
+             type="button"
              onClick={() => handleMoveOption('ROOT')}
              className="w-full flex items-center p-3 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 hover:border-indigo-300 dark:hover:border-indigo-500 transition-all text-left"
            >
@@ -529,6 +534,7 @@ export const CategoryDetail: React.FC<CategoryDetailProps> = ({ categories, upda
            
            {groups.map(group => (
              <button
+              type="button"
               key={group.id}
               onClick={() => handleMoveOption(group.id)}
               className="w-full flex items-center p-3 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 hover:border-indigo-200 dark:hover:border-indigo-500 transition-all text-left group"
@@ -541,6 +547,34 @@ export const CategoryDetail: React.FC<CategoryDetailProps> = ({ categories, upda
            {groups.length === 0 && (
              <p className="text-sm text-slate-400 italic p-2">No groups available.</p>
            )}
+        </div>
+      </Modal>
+      
+      {/* Delete Confirmation Modal */}
+      <Modal
+        isOpen={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        title={deleteTarget?.isGroup ? "Delete Group" : "Delete Option"}
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setDeleteTarget(null)}>Cancel</Button>
+            <Button variant="danger" onClick={confirmDelete}>Delete</Button>
+          </>
+        }
+      >
+        <div className="flex items-start gap-4 p-2">
+          <div className="p-3 bg-red-100 dark:bg-red-900/30 rounded-full text-red-600 dark:text-red-400 shrink-0">
+             <AlertTriangle size={24} />
+          </div>
+          <div className="space-y-2">
+            <p className="text-slate-700 dark:text-slate-300 font-medium">
+               {deleteTarget?.isGroup 
+                 ? "Are you sure you want to delete this group and all its contents?" 
+                 : "Are you sure you want to delete this option?"
+               }
+            </p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">This action cannot be undone.</p>
+          </div>
         </div>
       </Modal>
 
