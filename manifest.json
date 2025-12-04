@@ -3,13 +3,13 @@
   "name": "Options Categorizer",
   "icons": [
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/2666/2666505.png",
-      "type": "image/png",
+      "src": "https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.13.1/icons/stack.svg",
+      "type": "image/svg+xml",
       "sizes": "192x192"
     },
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/2666/2666505.png",
-      "type": "image/png",
+      "src": "https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.13.1/icons/stack.svg",
+      "type": "image/svg+xml",
       "sizes": "512x512"
     }
   ],
