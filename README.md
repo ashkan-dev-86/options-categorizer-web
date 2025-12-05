@@ -11,4 +11,4 @@ The Web Version of Options Categorizer
 2. Run the app:
    `npm run dev`
 
-You can find the deployed version on options-categorizer.vercel.app
+You can find the deployed version on [options-categorizer.vercel.app](https://options-categorizer.vercel.app/)
