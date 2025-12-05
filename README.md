@@ -10,3 +10,5 @@ The Web Version of Options Categorizer
    `npm install`
 2. Run the app:
    `npm run dev`
+
+You can find the deployed version on options-categorizer.vercel.app
