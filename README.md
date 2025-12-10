@@ -1,5 +1,8 @@
 # options-categorizer-web
-The Web Version of Options Categorizer
+The Web Version of Options Categorizer.
+
+## This app is a TierList app
+This app allows you to create, sort, and search different categories, as well as import and export them. You can also create groups and options within each category.
 
 ## Run Locally
 
